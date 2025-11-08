@@ -1189,7 +1189,8 @@ sudo apt update
 sudo apt install tor torsocks -y
 ```
 
-tor — сам сервис Tor, torsocks — обёртка, которая перенаправляет трафик через Tor.
+- tor — сам сервис Tor
+- torsocks — обёртка, которая перенаправляет трафик через Tor.
 
 Запуск Tor
 
