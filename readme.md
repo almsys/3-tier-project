@@ -22,6 +22,7 @@
 
 ---
 <img width="4715" height="2817" alt="image" src="https://github.com/user-attachments/assets/17f47a3a-a187-4b9f-b8ca-333e35bc0860" />
+Адаптация проекта AWS на локальной инфраструктуре.
 
 Приложение:
 
