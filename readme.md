@@ -1208,7 +1208,7 @@ netstat -tlnp | grep 9050
 ```
 tcp  0  0 127.0.0.1:9050  0.0.0.0:*  LISTEN  tor
 ```
-⚡ Использование Tor для Helm
+Использование Tor для Helm
 
 Можно использовать torsocks как обёртку:
 ```bash
