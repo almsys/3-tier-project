@@ -2,11 +2,6 @@
 
 > **DevOps проект**: Комплексная инфраструктура с K3s, CI/CD, мониторингом и логированием
 
-<img width="4715" height="2817" alt="image" src="https://github.com/user-attachments/assets/a5a0b8b3-d99b-4e72-8c76-362e4a4ec875" />
-
-
-<img width="1718" height="880" alt="image" src="https://github.com/user-attachments/assets/0dc660e5-5be0-448e-b273-4825d7548355" />
-
 ## Содержание
 
 1. [Введение и архитектура](#введение)
@@ -26,7 +21,11 @@
 15. [Заключение](#заключение)
 
 ---
+<img width="4715" height="2817" alt="image" src="https://github.com/user-attachments/assets/17f47a3a-a187-4b9f-b8ca-333e35bc0860" />
 
+Приложение:
+
+<img width="1718" height="880" alt="image" src="https://github.com/user-attachments/assets/0dc660e5-5be0-448e-b273-4825d7548355" />
 ## Введение
 
 ### Цель проекта
