@@ -25,7 +25,10 @@
 
 Приложение:
 
-<img width="1718" height="880" alt="image" src="https://github.com/user-attachments/assets/0dc660e5-5be0-448e-b273-4825d7548355" />
+<img width="1718" height="760" alt="image" src="https://github.com/user-attachments/assets/3d836267-3a1e-4e27-9633-5b463a7eba21" />
+
+
+
 ## Введение
 
 ### Цель проекта
