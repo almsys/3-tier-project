@@ -21,7 +21,7 @@ locals {
     dns-server = {
       vm_id           = 253
       cores           = 1
-      memory          = 1024
+      memory          = 2048
       disk_size       = 10
       extra_disk_size = null
       networks = [
@@ -32,12 +32,23 @@ locals {
     cf-tunnel = {
       vm_id           = 250
       cores           = 1
-      memory          = 1024
+      memory          = 2048
       disk_size       = 10
       extra_disk_size = null
       networks = [
         { bridge = "vmbr0", ip = "10.0.10.50/24", gateway = "10.0.10.1" },
         { bridge = "vmbr1", ip = "192.168.100.50/24", gateway = null }
+      ]
+    }
+	ngrok-tunnel = {
+      vm_id           = 251
+      cores           = 1
+      memory          = 2048
+      disk_size       = 10
+      extra_disk_size = null
+      networks = [
+        { bridge = "vmbr0", ip = "10.0.10.60/24", gateway = "10.0.10.1" },
+        { bridge = "vmbr1", ip = "192.168.100.60/24", gateway = null }
       ]
     }
     k3s-master = {
@@ -47,7 +58,7 @@ locals {
       disk_size       = 60
       extra_disk_size = null
       networks = [
-        { bridge = "vmbr1", ip = "192.168.100.10/24", gateway = "192.168.100.1" }
+        { bridge = "vmbr1", ip = "192.168.100.10/24", gateway = "192.168.100.60" }
       ]
     }
     k3s-worker-1 = {
@@ -57,7 +68,7 @@ locals {
       disk_size       = 80
       extra_disk_size = null
       networks = [
-        { bridge = "vmbr1", ip = "192.168.100.11/24", gateway = "192.168.100.1" }
+        { bridge = "vmbr1", ip = "192.168.100.11/24", gateway = "192.168.100.60" }
       ]
     }
     k3s-worker-2 = {
@@ -67,7 +78,7 @@ locals {
       disk_size       = 80
       extra_disk_size = null
       networks = [
-        { bridge = "vmbr1", ip = "192.168.100.12/24", gateway = "192.168.100.1" }
+        { bridge = "vmbr1", ip = "192.168.100.12/24", gateway = "192.168.100.60" }
       ]
     }
     jenkins = {
@@ -77,7 +88,7 @@ locals {
       disk_size       = 40
       extra_disk_size = null
       networks = [
-        { bridge = "vmbr1", ip = "192.168.100.101/24", gateway = "192.168.100.1" }
+        { bridge = "vmbr1", ip = "192.168.100.19/24", gateway = "192.168.100.60" }
       ]
     }
     minio = {
@@ -87,7 +98,7 @@ locals {
       disk_size       = 20
       extra_disk_size = 100
       networks = [
-        { bridge = "vmbr1", ip = "192.168.100.20/24", gateway = "192.168.100.1" }
+        { bridge = "vmbr1", ip = "192.168.100.20/24", gateway = "192.168.100.60" }
       ]
     }
     jumphost = {

@@ -6,7 +6,7 @@ output "vm_ips" {
     k3s-master    = "192.168.100.10"
     k3s-worker-1  = "192.168.100.11"
     k3s-worker-2  = "192.168.100.12"
-    jenkins       = "192.168.100.101"
+    jenkins       = "192.168.100.19"
     minio         = "192.168.100.20"
     jumphost      = "10.0.10.102, 192.168.100.5"
   }
@@ -34,7 +34,7 @@ output "ssh_commands" {
     k3s-master    = "ssh admin@192.168.100.10"
     k3s-worker-1  = "ssh admin@192.168.100.11"
     k3s-worker-2  = "ssh admin@192.168.100.12"
-    jenkins       = "ssh admin@192.168.100.101"
+    jenkins       = "ssh admin@192.168.100.19"
     minio         = "ssh admin@192.168.100.20"
     jumphost      = "ssh admin@10.0.10.102  # или ssh admin@192.168.100.5"
   }
