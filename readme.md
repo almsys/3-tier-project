@@ -1,4 +1,4 @@
-Доступ к сервисам# Развертывание Production-ready E-Commerce инфраструктуры в Proxmox
+Развертывание Production-ready E-Commerce инфраструктуры в Proxmox
 
 > **DevOps проект**: Комплексная инфраструктура с K3s, CI/CD, мониторингом и логированием
 
