@@ -1,4 +1,4 @@
-# Развертывание Production-ready E-Commerce инфраструктуры в Proxmox
+Доступ к сервисам# Развертывание Production-ready E-Commerce инфраструктуры в Proxmox
 
 > **DevOps проект**: Комплексная инфраструктура с K3s, CI/CD, мониторингом и логированием
 
@@ -11,24 +11,26 @@
 5. [Object Storage (MinIO)](#object-storage-minio)
 6. [Kubernetes кластер (K3s)](#kubernetes-кластер-k3s)
 7. [Persistent Storage (Longhorn)](#persistent-storage-longhorn)
-8. [Ingress Controller (Traefik+Metalib)](#ingress-controller-traefik)
-9. [Внешний доступ (ngrok Tunnel)](#внешний-доступ)
-10. [CI/CD (Jenkins)](#cicd-jenkins)
+8. [Ingress Controller (Traefik+Metalib)](#7-LoadBalancer-MetalLB)
+9. [Внешний доступ (ngrok Tunnel)](#9-Внешний-доступ-ngrok-Tunnel)
+10. [CI/CD Jenkins](#10-CI-CD-Jenkins)
 11. [Мониторинг (Prometheus Stack)](#мониторинг-prometheus-stack)
 12. [Логирование (ELK Stack)](#логирование-elk-stack)
-13. [GitOps (ArgoCD)](#gitops-argocd)
+13. [GitOps (ArgoCD)](#13-GitOps-ArgoCD)
 14. [Развертывание приложения EasyShop](#развертывание-приложения)
 15. [Заключение](#заключение)
 
 ---
-<img width="4715" height="2817" alt="image" src="https://github.com/user-attachments/assets/17f47a3a-a187-4b9f-b8ca-333e35bc0860" />
-Адаптация проекта AWS на локальной инфраструктуре.
 
-Приложение:
+<img width="4715" height="2817" alt="image" src="https://github.com/user-attachments/assets/64f0c920-fbb8-4d07-a08c-76c28d42b50f" />
+Схема сети.
 
-<img width="1718" height="760" alt="image" src="https://github.com/user-attachments/assets/3d836267-3a1e-4e27-9633-5b463a7eba21" />
+---
 
+<img width="1919" height="946" alt="image" src="https://github.com/user-attachments/assets/bafa8adc-2b82-4785-b4e0-a0f44e8929a0" />
+Приложение.
 
+---
 
 ## Введение
 
@@ -73,7 +75,7 @@ Traefik Ingress Controller (K3s)
 └────────────────────────────────────────────┘
     ↓                    ↓
 Jenkins CI          MinIO S3
-(192.168.100.101)   (192.168.100.20)
+(192.168.100.19)   (192.168.100.20)
 
 Infrastructure Services:
 - BIND9 DNS (192.168.100.53)
@@ -109,7 +111,7 @@ graph TB
 | k3s-master | 4 | 8GB | 60GB | 192.168.100.10 | K3s Control Plane |
 | k3s-worker-1 | 4 | 10GB | 80GB | 192.168.100.11 | K3s Worker Node |
 | k3s-worker-2 | 4 | 10GB | 80GB | 192.168.100.12 | K3s Worker Node |
-| jenkins | 2 | 4GB | 40GB | 192.168.100.101 | CI Server |
+| jenkins | 2 | 4GB | 40GB | 192.168.100.19 | CI Server |
 | minio | 2 | 4GB | 20GB+100GB | 192.168.100.20 | Object Storage |
 | jumphost | 1 | 2GB | 20GB | 10.0.10.102<br>192.168.100.5 | Management Host |
 
@@ -184,10 +186,11 @@ ip addr show vmbr1  # Проверка
 ├── 192.168.100.10   - k3s-master
 ├── 192.168.100.11   - k3s-worker-1
 ├── 192.168.100.12   - k3s-worker-2
+├── 192.168.100.19   - jenkins
 ├── 192.168.100.20   - minio
 ├── 192.168.100.60   - ngrok-tunnel (eth1) [NAT Gateway]
-├── 192.168.100.53   - dns-server (eth1)
-└── 192.168.100.101  - jenkins
+└── 192.168.100.53   - dns-server (eth1)
+
 ```
 
 ---
@@ -324,7 +327,7 @@ k3s-worker-1    IN      A       192.168.100.11
 k3s-worker-2    IN      A       192.168.100.12
 
 ; Дополнительные сервисы
-jenkins         IN      A       192.168.100.101
+jenkins         IN      A       192.168.100.19
 minio           IN      A       192.168.100.20
 
 ; Сервисные записи (Ingress)
@@ -367,7 +370,7 @@ sudo bash -c 'cat > /etc/bind/zones/db.192.168.100 <<EOF
 60      IN      PTR     ngrok-tunnel.local.lab.
 53      IN      PTR     dns-server.local.lab.
 53      IN      PTR     ns1.local.lab.
-101     IN      PTR     jenkins.local.lab.
+19      IN      PTR     jenkins.local.lab.
 EOF'
 ```
 
@@ -525,6 +528,7 @@ sudo nano /etc/netplan/00-installer-config.yaml
 Содержимое:
 
 ```yaml
+sudo bash -c 'cat > /etc/netplan/00-installer-config.yaml <<EOF
 network:
   version: 2
   ethernets:
@@ -543,9 +547,11 @@ network:
       nameservers:
         addresses: [192.168.100.53]
         search: [local.lab]
+EOF'
 ```
 ```bash
 # Установка зависимости для netplan и настройка прав на файл сетевой конфигурации
+sudo apt update
 sudo apt install -y openvswitch-switch
 sudo chmod 600 /etc/netplan/00-installer-config.yaml
 ```
@@ -570,7 +576,8 @@ ping -c 2 google.com
 
 ```bash
 ssh admin@jumphost.local.lab
-
+```
+```bash
 sudo systemctl disable systemd-resolved
 sudo systemctl stop systemd-resolved
 sudo rm -f /etc/resolv.conf
@@ -604,7 +611,7 @@ network:
         addresses: [192.168.100.53]
         search: [local.lab]
 EOF'
-
+sudo apt update
 sudo apt install -y openvswitch-switch
 sudo chmod 600 /etc/netplan/00-installer-config.yaml
 sudo netplan apply
@@ -861,6 +868,7 @@ mc admin info localminio
 ```bash
 # Bucket для Terraform state
 mc mb localminio/terraform-state
+# Buckets для docker-images/jenkins-artefacts/backups
 mc mb localminio/docker-images
 mc mb localminio/jenkins-artifacts
 mc mb localminio/backups
@@ -884,7 +892,9 @@ mc tree localminio
 - Password: `minioadmin123`
 
 ---
+<img width="1318" height="829" alt="image" src="https://github.com/user-attachments/assets/e1f92882-dc76-4930-b3ec-a580f8a17ae4" />
 
+---
 ## Kubernetes кластер (K3s)
 
 ### Подготовка нод
@@ -966,7 +976,8 @@ sudo cat /var/lib/rancher/k3s/server/node-token
 
 ```bash
 ssh admin@k3s-worker-1.local.lab
-
+```
+```bash
 # Замените <TOKEN> на токен с master
 curl -sfL https://get.k3s.io | K3S_URL=https://k3s-master.local.lab:6443 \
   K3S_TOKEN="<TOKEN_FROM_MASTER>" \
@@ -982,7 +993,8 @@ sudo systemctl status k3s-agent
 
 ```bash
 ssh admin@k3s-worker-2.local.lab
-
+```
+```bash
 curl -sfL https://get.k3s.io | K3S_URL=https://k3s-master.local.lab:6443 \
   K3S_TOKEN="<TOKEN_FROM_MASTER>" \
   INSTALL_K3S_EXEC="agent" sh -s - \
@@ -996,9 +1008,11 @@ sudo systemctl status k3s-agent
 
 На master:
 
+
 ```bash
 ssh admin@k3s-master.local.lab
-
+```
+```bash
 sudo kubectl get nodes -o wide
 # Ожидаем все 3 ноды в статусе Ready
 
@@ -1092,6 +1106,10 @@ k9s  # Интерактивный интерфейс
 
 ## Persistent Storage (Longhorn)
 
+<img width="1484" height="885" alt="image" src="https://github.com/user-attachments/assets/a2fdf209-8cca-403b-8f05-05c552ffaa08" />
+
+
+
 ### Подготовка worker нод
 
 На **всех worker нодах** установите зависимости:
@@ -1141,7 +1159,12 @@ kubectl -n longhorn-system get pods -w
 kubectl -n longhorn-system get pods
 kubectl -n longhorn-system get daemonset
 ```
-
+```Display
+NAME                       DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
+engine-image-ei-26bab25d   3         3         3       3            3           <none>          7m53s
+longhorn-csi-plugin        3         3         3       3            3           <none>          7m2s
+longhorn-manager           3         3         3       3            3           <none>          8m58s
+```
 ### Установка Longhorn как default StorageClass
 
 ```bash
@@ -1161,6 +1184,7 @@ kubectl get storageclass
 ### Создание Ingress для Longhorn UI
 
 ```bash
+# Создаем простой Ingress без middleware
 cat <<EOF | kubectl apply -f -
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -1168,7 +1192,7 @@ metadata:
   name: longhorn-ingress
   namespace: longhorn-system
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
 spec:
   rules:
   - host: longhorn.local.lab
@@ -1188,17 +1212,22 @@ kubectl -n longhorn-system get ingress
 ```
 
 Доступ к UI (после установки Traefik): `http://longhorn.local.lab`
+<img width="1915" height="953" alt="image" src="https://github.com/user-attachments/assets/a686d96c-ebda-4034-8619-2902e5d6215e" />
+
+Примечание: Данный интерйфейс будет доступен после установки Traefik.
+
 
 ---
+### Эту настройку можно пропустить (дополнительная), нужна на тот случай если провайдеры блокируют интернет доступ к западным репозиториям
 ### Установка Tor на Ubuntu / Debian на jumphost
+Так как наши провайдеры используют технологии великого китайского фаервола и тем самым блокируют временами репозитории helm в западных странах, то нам для обхода этого ограничения понадобится Tor. В первый раз когда я устанавливал пакеты, не мог понять почему простая команда установки не работает, ушло много времени на диагностику, чтобы понять что наши провайдеры блокируют соединения. Чтобы не искать причину почему не скачиваются программы и пакеты, а сразу проверить как работает все через Tor, для этого сделана эта инструкция. Мы будем его запускать Tor в консоли.
 
 ```bash
 sudo apt update
 sudo apt install tor torsocks -y
 ```
 
-- tor — сам сервис Tor
-- torsocks — обёртка, которая перенаправляет трафик через Tor.
+tor — сам сервис Tor, torsocks — обёртка, которая перенаправляет трафик через Tor.
 
 Запуск Tor
 
@@ -1243,7 +1272,7 @@ alias helmtor='HTTPS_PROXY=socks5://127.0.0.1:9050 helm'
 helmtor repo add metallb https://metallb.github.io/metallb
 helmtor repo update
 ```
-👉 socks5h важно — оно гарантирует, что DNS тоже пойдёт через Tor, а не локально.
+socks5h важно — оно гарантирует, что DNS тоже пойдёт через Tor, а не локально.
 
 ---
 ### 7. LoadBalancer (MetalLB)
@@ -1267,8 +1296,12 @@ MetalLB предоставляет тип сервиса LoadBalancer для bar
 
 ```bash
 # Добавить Helm репозиторий
-torsocks helm repo add metallb https://metallb.github.io/metallb
-torsocks helm repo update
+helm repo add metallb https://metallb.github.io/metallb
+helm repo update
+
+# Вариант через Tor если провайдер блокирует установку
+# torsocks helm repo add metallb https://metallb.github.io/metallb
+# torsocks helm repo update
 
 # Создать namespace
 kubectl create namespace metallb-system
@@ -1382,8 +1415,12 @@ EOF
 #### Установка Traefik
 
 ```bash
-torsocks helm repo add traefik https://traefik.github.io/charts
-torsocks helm repo update
+helm repo add traefik https://traefik.github.io/charts
+helm repo update
+
+# Вариант через Tor если провайдер блокирует
+# torsocks helm repo add traefik https://traefik.github.io/charts
+# torsocks helm repo update
 
 kubectl create namespace traefik
 
@@ -1394,6 +1431,17 @@ helm install traefik traefik/traefik \
 # Подождать готовности
 kubectl -n traefik get pods -w
 ```
+#### Установка  Traefik CRD
+```bash
+# Установим Traefik CRD
+kubectl apply -f https://raw.githubusercontent.com/traefik/traefik/v2.9/docs/content/reference/dynamic-configuration/kubernetes-crd-definition-v1.yml
+kubectl apply -f https://raw.githubusercontent.com/traefik/traefik/v2.9/docs/content/reference/dynamic-configuration/kubernetes-crd-rbac.yml
+```
+CRD — это Custom Resource Definition (определение пользовательского ресурса) в Kubernetes.
+Проще говоря, CRD позволяет расширять Kubernetes новыми типами ресурсов, как будто это встроенные объекты вроде Pod, Service или Deployment.
+Когда вы создаёте CRD, вы фактически "регистрируете" новый тип ресурса, которым затем можно управлять с помощью kubectl, YAML-манифестов и API Kubernetes.
+**CRD в контексте Traefik:** Traefik — это ingress-контроллер (маршрутизатор для входящего трафика). Чтобы работать с Kubernetes в «native» стиле, Traefik использует собственные CRD, через которые можно описывать маршруты, middleware и т.д.
+
 
 #### Проверка Traefik LoadBalancer
 
@@ -1501,18 +1549,22 @@ spec:
             port:
               number: 80
 EOF
-
+```
+```bash
 # Добавление DNS записи
 ssh admin@dns-server.local.lab
+```
+```bash
 sudo bash -c 'echo "test           IN      A       192.168.100.100" >> /etc/bind/zones/db.local.lab'
 sudo sed -i 's/Serial.*$/Serial: 3/' /etc/bind/zones/db.local.lab
 sudo rndc reload local.lab
-exit
-
+# exit
 # Тест доступа (порт не нужен!)
-curl http://test.local.lab
+curl -k https://test.local.lab
+# curl -i http://test.local.lab если http
 # Ожидается: Welcome to nginx!
-
+```
+```bash
 # Очистка
 kubectl delete namespace test
 ```
@@ -1527,7 +1579,8 @@ SSH к ngrok-tunnel:
 
 ```bash
 ssh admin@ngrok-tunnel.local.lab
-
+```
+```bash
 # Обновить систему
 sudo apt update && sudo apt upgrade -y
 
@@ -1548,8 +1601,9 @@ ngrok version
 ```bash
 # Авторизация (замените YOUR_AUTHTOKEN на ваш токен из https://dashboard.ngrok.com)
 ngrok config add-authtoken YOUR_AUTHTOKEN
-
-# Создать конфигурацию
+```
+```bash
+# Создайте конфигурацию
 mkdir -p ~/.config/ngrok
 cat > ~/.config/ngrok/ngrok.yml <<EOF
 version: "2"
@@ -1558,16 +1612,19 @@ authtoken: YOUR_AUTHTOKEN
 tunnels:
   easyshop:
     proto: http
-    addr: 192.168.100.100:80
-    host_header: rewrite
-#    bind_tls: true
+    addr: 192.168.100.100:443
+    host_header: "easyshop.local.lab"
+#   host_header: rewrite
+#   bind_tls: true
+#   -host-header="easyshop.local.lab"
 
-region: us
+region: eu
 log_level: info
 log_format: json
 log: /var/log/ngrok.log
 EOF
-
+```
+```bash
 # Создать systemd service
 sudo tee /etc/systemd/system/ngrok.service > /dev/null <<EOF
 [Unit]
@@ -1616,32 +1673,13 @@ echo "Ваш ngrok URL: $NGROK_URL"
 echo $NGROK_URL > ~/ngrok-url.txt
 ```
 
-#### Настройка NAT для внутреннего доступа
-
-На ngrok-tunnel VM:
-
-```bash
-# Включить IP forwarding
-sudo sysctl -w net.ipv4.ip_forward=1
-echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf
-
-# Настроить iptables
-sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-sudo iptables -A FORWARD -i eth1 -o eth0 -j ACCEPT
-sudo iptables -A FORWARD -i eth0 -o eth1 -m state --state RELATED,ESTABLISHED -j ACCEPT
-
-# Сохранить правила
-sudo apt install -y iptables-persistent
-sudo netfilter-persistent save
-sudo sysctl -p
-```
 
 ---
 
-### 10. CI/CD (Jenkins)
+### 10. CI/CD Jenkins
 
-#### Установка Jenkins (НАСТРОЙКА ПО ВИДЕО - установка плагинов и создание пайплайна)
-или по файлу https://github.com/sysops8/3-tier-project/blob/main/proxmox_easyshop_guide.md
+#### Установка Jenkins 
+
 SSH к jenkins:
 
 ```bash
@@ -1696,6 +1734,8 @@ sudo apt install -y docker.io
 sudo systemctl enable docker
 sudo systemctl start docker
 sudo usermod -aG docker jenkins
+sudo getent group docker
+# Должен быть пользователь jenkins - docker:x:122:jenkins
 
 # Docker Compose
 sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
@@ -1730,7 +1770,7 @@ sudo -u jenkins kubectl get nodes
 
 ### 2. Настройка Jenkins через Web UI
 
-Откройте в браузере: `http://jenkins.local.dev:8080`
+Откройте в браузере: `http://jenkins.local.lab:8080`
 
 1. Введите начальный пароль
 2. Установите рекомендуемые плагины
@@ -1746,7 +1786,6 @@ sudo -u jenkins kubectl get nodes
 - Kubernetes CLI
 - Git Parameter
 - Pipeline: Stage View
-- Blue Ocean
 
 ### 4. Настройка credentials
 
@@ -1756,18 +1795,47 @@ sudo -u jenkins kubectl get nodes
 - **Kind**: Username with password
 - **ID**: `github-credentials`
 - **Username**: ваш GitHub username
-- **Password**: Personal Access Token (создайте на GitHub)
+- **Password**: Personal Access Token (создайте на GitHub -> Settings -> Developer Settings -> Personal Access tokens -> Fine Grained tokens -> Create)
 
 #### DockerHub credentials:
 - **Kind**: Username with password
 - **ID**: `docker-hub-credentials`
 - **Username**: ваш DockerHub username
-- **Password**: ваш DockerHub password
+- **Password**: ваш DockerHub password (создайте на DockerHub -> Account Settings -> Personal Access tokens -> Create new token -> Access Permisions (read, write, delete)-> Create)
 
 #### Kubeconfig:
 ```bash
-# На jumphost скопируйте kubeconfig с master ноды
-scp ubuntu@192.168.100.10:~/.kube/config ./k3s-kubeconfig
+mkdir -p ~/.kube
+
+sudo scp admin@k3s-master.local.lab:/etc/rancher/k3s/k3s.yaml ~/.kube/config
+# Если ошибка permission denied, от на k3s-master вводим команду sudo chmod 644 /etc/rancher/k3s/k3s.yaml
+# После копирования, возвращаем права sudo chmod 600 /etc/rancher/k3s/k3s.yaml
+
+# Замена адреса сервера
+sed -i 's/127.0.0.1/k3s-master.local.lab/g' ~/.kube/config
+
+# Установка правильных прав
+chmod 600 ~/.kube/config
+
+# Проверка доступа
+kubectl get nodes
+kubectl cluster-info
+
+# Создание алиасов
+cat >> ~/.bashrc <<EOF
+
+# Kubernetes aliases
+alias k='kubectl'
+alias kgp='kubectl get pods'
+alias kgs='kubectl get svc'
+alias kgn='kubectl get nodes'
+alias kga='kubectl get all'
+alias kdp='kubectl describe pod'
+alias kl='kubectl logs'
+alias kex='kubectl exec -it'
+EOF
+
+source ~/.bashrc
 ```
 
 В Jenkins:
@@ -1775,17 +1843,65 @@ scp ubuntu@192.168.100.10:~/.kube/config ./k3s-kubeconfig
 - **ID**: `kubeconfig`
 - **File**: загрузите k3s-kubeconfig
 
+Примечание: загрузка через браузер
+
 ### 5. Настройка Jenkins Shared Library
 
-**Manage Jenkins → System → Global Pipeline Libraries**
+**Manage Jenkins → System → Global Trusted Pipeline Libraries**
 
 - **Name**: `Shared`
 - **Default version**: `main`
 - **Retrieval method**: Modern SCM
 - **Source Code Management**: Git
-- **Project Repository**: форкните и используйте свой репозиторий
+- **Project Repository**: форкните репозиторий https://github.com/sysops8/jenkins-shared-libraries к себе в аккаунт на github и используйте как свой репозиторий
+- **Credentials**: "github_credentials" который мы до этого настраивали
+- **Save**
 
 ---
+### 6. Настройка GitHub Webhook
+
+1. Перейдите в Settings вашего репозитория на GitHub
+2. Webhooks → Add webhook
+3. **Payload URL**: `http://YOUR_NGROK_URL/github-webhook/`
+4. **Content type**: `application/json`
+5. **Events**: Just the push event
+6. **Active**: ✓
+
+### 7. Создание Jenkins Pipeline Job
+
+В Jenkins:
+1. **New Item** → Введите имя `easyshop-pipeline` → **Pipeline** → OK
+2. **General**:
+   - ✓ GitHub project: `https://github.com/YOUR_USERNAME/tws-e-commerce-app`
+3. **Build Triggers**:
+   - ✓ GitHub hook trigger for GITScm polling
+4. **Pipeline**:
+   - **Definition**: Pipeline script from SCM
+   - **SCM**: Git
+   - **Repository URL**: `https://github.com/YOUR_USERNAME/tws-e-commerce-app`
+   - **Credentials**: github-credentials
+   - **Branch**: */master
+   - **Script Path**: Jenkinsfile
+5. **Save**
+
+### 8. Тестирование Pipeline
+
+```bash
+# Сделайте изменение в коде
+echo "// test change" >> src/app/page.tsx
+
+# Закоммитьте и запушьте
+git add .
+git commit -m "test: trigger pipeline"
+git push origin master
+
+# Pipeline должен автоматически запуститься в Jenkins так как Github отправит вебхук Jenkins.
+```
+Примечание: Как вариант зайдите на github.com и добавьте просто комментарий в любой файл вашего проекта в репозитории. Или просто в ручную запустите пайплайн в Jenkins.
+
+---
+<img width="1919" height="953" alt="image" src="https://github.com/user-attachments/assets/b3ba67b4-14fa-4abb-ab2e-d251dd3e32be" />
+Картинка с завершенным Pipeline. Первый запуск Pipeline будет подольше, чем последующие.
 
 ---
 
@@ -2090,41 +2206,48 @@ helm repo add argo https://argoproj.github.io/argo-helm
 helm repo update
 
 # Получение values файла
-helm show values argo/argo-cd > argocd-values.yaml
-
+# helm show values argo/argo-cd > argocd-values.yaml
 # Редактирование values
-nano argocd-values.yaml
+# vi argocd-values.yaml
 ```
 
 Измените следующие параметры в `argocd-values.yaml`:
 
 ```yaml
+cat > argocd-values-traefik.yaml << EOF
 global:
   domain: argocd.local.lab
 
 configs:
   params:
-    server.insecure: true  # Для работы за Nginx Ingress
+    server.insecure: "true" # Оставляем безопасный режим
+  secret:
+    create: true
 
 server:
+  service:
+    type: ClusterIP
+    
+  # Настройки для Traefik
   ingress:
     enabled: true
-    ingressClassName: nginx
+    ingressClassName: traefik
     annotations:
-      nginx.ingress.kubernetes.io/ssl-redirect: "false"
-      nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+      traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     hosts:
       - argocd.local.lab
     paths:
       - /
     pathType: Prefix
+EOF
 ```
-
+В нужно добавить строки server.insecure: true и annotations в нужные места.
 ```bash
-# Установка ArgoCD
+# Установка с переустановкой 
+# helm uninstall argocd -n argocd
 helm install argocd argo/argo-cd \
   --namespace argocd \
-  --values argocd-values.yaml
+  --values argocd-values-traefik.yaml
 
 # Ожидание готовности подов
 kubectl wait --for=condition=ready pod \
@@ -2156,13 +2279,13 @@ sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
 rm argocd-linux-amd64
 
 # Логин через CLI
-argocd login argocd.local.dev \
+argocd login argocd.local.lab \
   --username admin \
   --password YOUR_PASSWORD \
   --insecure
 
 # Изменение пароля через CLI
-argocd account update-password
+# argocd account update-password
 ```
 
 ### 4. Создание Application в ArgoCD
@@ -2178,15 +2301,23 @@ argocd account update-password
    - **Prune Resources**: ✓ (enabled)
    
 3. **Source**:
-   - **Repository URL**: `https://github.com/YOUR_USERNAME/tws-e-commerce-app`
+   - **Repository URL**: `https://github.com/sysops8/tws-e-commerce-app_hackathon`  измените на свой репозиторий
    - **Revision**: master
    - **Path**: kubernetes
+   - В "Path" указываем каталог в репозитории в котором у нас файламы конфигурации кластера Kubernetes
 
 4. **Destination**:
    - **Cluster URL**: https://kubernetes.default.svc
    - **Namespace**: easyshop
 
 5. Нажмите **CREATE**
+---
+<img width="1919" height="920" alt="image" src="https://github.com/user-attachments/assets/c9bacc20-6a4c-472d-8715-3bc093a7e335" />
+- Установленный ArgoCD с конфигурацией по ссылке `https://github.com/sysops8/tws-e-commerce-app_hackathon/kubernetes`
+<img width="1919" height="1031" alt="image" src="https://github.com/user-attachments/assets/010221e1-69ad-42f8-aede-8a80b9806b1a" />
+- Приложение с доступом через ngrok
+
+---
 
 #### Через манифест:
 
@@ -2515,7 +2646,7 @@ kubectl get certificates -A
 
 ## 🎯 Заключение
 
-Развернута полная production-ready DevOps инфраструктуру включающая:
+Вы успешно развернули полную production-ready DevOps инфраструктуру включающую:
 
 - ✅ **Kubernetes кластер** (K3s) с высокой доступностью
 - ✅ **Постоянное хранилище** (Longhorn) для stateful приложений
@@ -2538,9 +2669,9 @@ kubectl get certificates -A
 - **Jenkins**: `http://jenkins.local.lab:8080`
 - **Longhorn**: `http://longhorn.local.lab`
 
-### Что желательно еще добавить 
+### Дополнительные настройки которые можно сделать
 
-1. Настройка домена вместо ngrok (опционально)
+1. Настройка домена вместо ngrok 
 2. Настройка SSL сертификатов для внутренних сервисов
 3. Настройка backup стратегии для кластера и данных
 4. Настройка оповещения в Slack/Telegram
