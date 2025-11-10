@@ -2243,9 +2243,9 @@ server:
     pathType: Prefix
 EOF
 ```
-В нужно добавить строки server.insecure: true и annotations в нужные места.
+
 ```bash
-# Установка с переустановкой 
+# Установка с переустановкой раскоментируйте если с установкой не получается
 # helm uninstall argocd -n argocd
 helm install argocd argo/argo-cd \
   --namespace argocd \
